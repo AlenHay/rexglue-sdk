@@ -17,7 +17,21 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux"
     find_package(Python3 COMPONENTS Interpreter QUIET)
     if(Python3_Interpreter_FOUND)
         set(REXGLUE_REGRESSION_CHECKS app_launch timer_wait timer_lifecycle interrupt_tls graphics_interrupt_concurrency graphics_shutdown
-            vulkan_pipeline_storage shader_cache_bounds)
+            vulkan_pipeline_storage shader_cache_bounds graph_registration gapfill_cleanup)
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(AMD64|amd64|x86_64)$")
+            # This producer uses the real decoder and writer; its test compiles
+            # and executes unmodified generated C++ with the actual SDK headers.
+            add_executable(regression_interior_entries regression/emit_interior_entries.cpp)
+            target_link_libraries(regression_interior_entries PRIVATE rexcodegen)
+            add_test(NAME regression_interior_entries
+                COMMAND ${Python3_EXECUTABLE}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/regression/test_interior_entries.py
+                    ${CMAKE_CURRENT_BINARY_DIR}/regression/interior_entries
+                    --compiler ${CMAKE_CXX_COMPILER}
+                    --producer $<TARGET_FILE:regression_interior_entries>)
+            set_tests_properties(regression_interior_entries PROPERTIES
+                TIMEOUT 60 LABELS "regression;asset_free")
+        endif()
         foreach(check IN LISTS REXGLUE_REGRESSION_CHECKS)
             add_test(NAME regression_${check}
                 COMMAND ${Python3_EXECUTABLE}
