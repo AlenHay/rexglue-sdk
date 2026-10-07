@@ -19,6 +19,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux"
         set(REXGLUE_REGRESSION_CHECKS app_launch timer_wait timer_lifecycle interrupt_tls graphics_interrupt_concurrency graphics_shutdown
             vulkan_pipeline_storage shader_cache_bounds graph_registration gapfill_cleanup)
         if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(AMD64|amd64|x86_64)$")
+            list(APPEND REXGLUE_REGRESSION_CHECKS simde_stream_pi)
             # This producer uses the real decoder and writer; its test compiles
             # and executes unmodified generated C++ with the actual SDK headers.
             add_executable(regression_interior_entries regression/emit_interior_entries.cpp)
@@ -46,5 +47,20 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux"
         endforeach()
     else()
         message(STATUS "Python3 unavailable: production-body regression fixtures are disabled")
+    endif()
+endif()
+
+# Patch preparation uses local Git objects and does not execute target binaries.
+if(UNIX)
+    find_package(Python3 COMPONENTS Interpreter QUIET)
+    find_package(Git QUIET)
+    if(Python3_Interpreter_FOUND AND Git_FOUND
+       AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../thirdparty/simde/.git")
+        add_test(NAME regression_prepare_simde
+            COMMAND ${Python3_EXECUTABLE}
+                ${CMAKE_CURRENT_SOURCE_DIR}/regression/test_prepare_simde.py
+                ${CMAKE_CURRENT_BINARY_DIR}/regression/prepare_simde)
+        set_tests_properties(regression_prepare_simde PROPERTIES
+            TIMEOUT 60 LABELS "regression;asset_free")
     endif()
 endif()
